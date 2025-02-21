@@ -95,14 +95,14 @@ class Dinosaur:
             self.dino_jump = False
 
     def duck(self):
-        self.image = self.duck_img[self.step_index // 5]
+        self.image = self.duck_img[self.step_index % 2]
         self.dino_rect = self.image.get_rect()
         self.dino_rect.x = self.X_POS
         self.dino_rect.y = self.Y_POS_DUCK
         self.step_index += 1
 
     def run(self):
-        self.image = self.run_img[self.step_index // 5]
+        self.image = self.run_img[self.step_index % 2]
         self.dino_rect = self.image.get_rect()
         self.dino_rect.x = self.X_POS
         self.dino_rect.y = self.Y_POS
@@ -112,7 +112,7 @@ class Dinosaur:
         self.image = self.jump_img
 
         if self.dino_jump:
-            self.dino_rect.y -= self.jump_vel * 4
+            self.dino_rect.y -= self.jump_vel * 5
             self.jump_vel -= 0.8
 
         if self.jump_vel < -self.JUMP_VEL:
@@ -216,6 +216,46 @@ class Confetti:
 
         screen.blit(confetti_surface, (0, 0))  # Draw confetti only in top half
 
+class TransitionManager:
+    def __init__(self):
+        self.transition_active = False
+        self.start_time = None
+        self.target_color = (255, 255, 255)  # Start with white
+        self.current_bg = (255, 255, 255)
+        self.current_fg = (0, 0, 0)  # Foreground (text, dino, obstacles)
+        self.transition_duration = 3  # 3 seconds transition
+
+    def start_transition(self, target_bg, target_fg):
+        self.transition_active = True
+        self.start_time = time.time()
+        self.target_color = target_bg
+        self.target_fg = target_fg  # Foreground color switch
+
+    def update(self):
+        if not self.transition_active:
+            return self.current_bg, self.current_fg  # No transition, return current colors
+
+        elapsed = time.time() - self.start_time
+        t = min(1, elapsed / self.transition_duration)  # Normalize time (0 to 1)
+
+        # Interpolate background color
+        r = int((1 - t) * self.current_bg[0] + t * self.target_color[0])
+        g = int((1 - t) * self.current_bg[1] + t * self.target_color[1])
+        b = int((1 - t) * self.current_bg[2] + t * self.target_color[2])
+        self.current_bg = (r, g, b)
+
+        # Interpolate foreground color
+        r_fg = int((1 - t) * self.current_fg[0] + t * self.target_fg[0])
+        g_fg = int((1 - t) * self.current_fg[1] + t * self.target_fg[1])
+        b_fg = int((1 - t) * self.current_fg[2] + t * self.target_fg[2])
+        self.current_fg = (r_fg, g_fg, b_fg)
+
+        # Stop transition when complete
+        if t >= 1:
+            self.transition_active = False
+
+        return self.current_bg, self.current_fg
+
 
 def main():
     global game_speed, x_pos_bg, y_pos_bg, points, obstacles
@@ -235,7 +275,7 @@ def main():
     def score():
         global game_speed, points
         points += 1
-        if points % 100 == 0:
+        if points % 500 == 0:
             game_speed += 1
             confetti.create_confetti()
         text = font.render("Points: " + str(points), True, (0, 0, 0))
